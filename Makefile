@@ -7,6 +7,9 @@ run:
 	docker-compose build app
 	docker-compose run --rm app
 
+run2:
+	go run ./cmd/cli2/...
+
 setup:
 	git config core.hooksPath .hooks
 	go install github.com/bwplotka/bingo@latest

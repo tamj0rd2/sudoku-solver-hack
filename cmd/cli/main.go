@@ -10,6 +10,7 @@ import (
 //go:embed testdata/*
 var testDataDir embed.FS
 
+// run through docker using `make run`
 func main() {
 	fmt.Println("Program starting!")
 
