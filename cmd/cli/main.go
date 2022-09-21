@@ -1,62 +1,74 @@
 package main
 
 import (
+	"embed"
 	"fmt"
 	"github.com/otiai10/gosseract"
-	"io"
 	"log"
-	"net/http"
-	"os"
 )
+
+//go:embed testdata/*
+var testDataDir embed.FS
 
 func main() {
 	fmt.Println("Program starting!")
 
-	const (
-		helloWorldFilePath = "./helloworld.png"
-		helloWorldImageURL = "https://raw.githubusercontent.com/otiai10/gosseract/main/test/data/001-helloworld.png"
-	)
-
-	if err := downloadFile(helloWorldFilePath, helloWorldImageURL); err != nil {
-		log.Fatal(err)
-	}
-
-	client := gosseract.NewClient()
+	client := newOCRClient()
 	defer client.Close()
 
-	if err := client.SetImage(helloWorldFilePath); err != nil {
-		log.Fatal(err)
-	}
+	for _, tc := range []struct {
+		filePath     string
+		expectedText string
+	}{
+		{
+			filePath:     "testdata/hello world.png",
+			expectedText: "Hello world!",
+		},
+		{
+			filePath:     "testdata/1-9.png",
+			expectedText: "123456789",
+		},
+	} {
+		b, err := testDataDir.ReadFile(tc.filePath)
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	text, err := client.Text()
-	if err != nil {
-		log.Fatal(err)
-	}
+		gotText, err := client.ReadBytesAsString(b)
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	fmt.Println(text)
-	fmt.Println("✅ Done :D")
+		if gotText != tc.expectedText {
+			log.Fatalf("expected %q but got %s", tc.expectedText, gotText)
+		}
+
+		fmt.Println("✅ ", tc.filePath)
+	}
 }
 
-func downloadFile(filepath string, url string) (err error) {
-	resp, err := http.Get(url)
+type ocrClient struct {
+	tessClient *gosseract.Client
+}
+
+func newOCRClient() *ocrClient {
+	tessClient := gosseract.NewClient()
+	return &ocrClient{tessClient: tessClient}
+}
+
+func (c *ocrClient) Close() error {
+	return c.tessClient.Close()
+}
+
+func (c *ocrClient) ReadBytesAsString(bytes []byte) (string, error) {
+	if err := c.tessClient.SetImageFromBytes(bytes); err != nil {
+		return "", fmt.Errorf("failed to set image from bytes: %w", err)
+	}
+
+	text, err := c.tessClient.Text()
 	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("bad status: %s", resp.Status)
+		return "", fmt.Errorf("failed to get text from image: %w", err)
 	}
 
-	out, err := os.Create(filepath)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	if _, err := io.Copy(out, resp.Body); err != nil {
-		return err
-	}
-
-	return nil
+	return text, nil
 }
