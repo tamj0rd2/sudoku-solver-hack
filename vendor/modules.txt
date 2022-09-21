@@ -1,0 +1,7 @@
+# github.com/otiai10/gosseract v2.2.1+incompatible
+## explicit
+github.com/otiai10/gosseract
+# github.com/otiai10/mint v1.4.0
+## explicit; go 1.18
+# golang.org/x/net v0.0.0-20220920203100-d0c6ba3f52d9
+## explicit; go 1.17
